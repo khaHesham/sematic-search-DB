@@ -6,7 +6,7 @@ class VecDB:
     def __init__(self, index: Index, file_path: str = "saved_db.csv", new_db: bool = True) -> None:
         self.file_path = file_path
         self.index = index
-        self.indexfile = 'index.kiro'
+        self.indexfile = 'out/IVF_index'
         
         if new_db:
             with open(self.file_path, "w") as fout:

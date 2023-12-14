@@ -27,8 +27,8 @@ class IVF_PQ(Index):
         self.clusters = []          # Vectors assigned to each cluster
         self.metadata = None        # the number of vectors within each cluster
         
-        self.clusters_file = 'clusters'
-        self.pq_index_file = 'centroids'
+        self.clusters_file = 'out/clusters'
+        self.pq_index_file = 'out/centroids'
 
             
     def train(self, data: np.ndarray):
