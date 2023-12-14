@@ -41,14 +41,6 @@ class IVF_PQ(Index):
         #TODO In case of more than 1M, we need to train on 1M, then predict the other vectors
         self.centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
 
-        '''
-        Steps:
-            1- Assign each vector to its cluster
-            2- store cluster assignments in self.cluster_assignments
-            3- store vectors assigned to each cluster in disk 
-            4- store centroids in disk
-            
-        '''
         print("Training PQ")
         _, pqcodes = self.pq_index.train(data)
         print("Saving PQ")
@@ -73,11 +65,7 @@ class IVF_PQ(Index):
         # nearest_clusters = np.argpartition(distances, self.nprob)[ :self.nprob]
         q = q.reshape((70,))
         
-        dot_product = self.centroids @ q.T # (K, M) * (M, 1) -> (K, 1)
-        norm_vec1 = np.linalg.norm(self.centroids, axis=1) # (K, 1)
-        norm_vec2 = np.linalg.norm(q)
-        norm = norm_vec1 * norm_vec2
-        distances = dot_product / norm
+        distances = self._cosine_similarity(self.centroids, q)
         
         nearest_clusters = np.argsort(distances)[-self.nprob:]
             
@@ -111,8 +99,6 @@ class IVF_PQ(Index):
             # save cluster to disk with its Id as name
             np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
             
-        # np.savetxt(self.clusters_file, self.clusters, fmt="%d")
-
         # save index file (centroids + metadata)
         index_data = np.column_stack((self.centroids, self.metadata))  
         np.savetxt(filename, index_data)
@@ -126,13 +112,16 @@ class IVF_PQ(Index):
             self.metadata = index_data[:,-1].astype(int)
             self.centroids = index_data[:,:-1]
         
-
-        
-        # skip_rows, max_rows = magic_seek(3, metadata)
-        # loaded_cluster = np.loadtxt("file.kiro", skiprows=skip_rows, max_rows=max_rows, dtype=int)
-        
     def _magic_seek(self, cluster_id, metadata):
         skip_rows = np.sum(metadata[:cluster_id])
         max_rows = metadata[cluster_id]
         return skip_rows, max_rows
     
+    def _cosine_similarity(self, X, y):
+        dot_product = X @ y.T 
+        norm_vec1 = np.linalg.norm(X, axis=1)
+        norm_vec2 = np.linalg.norm(y)
+        norm = norm_vec1 * norm_vec2
+        distances = dot_product / norm
+        
+        return distances
