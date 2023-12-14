@@ -34,7 +34,6 @@ class IVF_PQ(Index):
         self.is_loaded_PQ = False
         self.is_loaded_IVF = False
         
-
             
     def train(self, data: np.ndarray):
         print("Training IVF")
@@ -48,14 +47,11 @@ class IVF_PQ(Index):
 
         clusters = [None] * self.K
 
-
         print("clustering vectors") 
         for clusterID in range(self.K):
             vectorIDs, = np.where(labels==clusterID)
             clusters[clusterID] = np.column_stack((pqcodes[vectorIDs], vectorIDs))
             
-            
-        self.metadata = np.array([len(clusters[i]) for i in range(self.K)])
         self.clusters = clusters
         
     
@@ -66,14 +62,12 @@ class IVF_PQ(Index):
         q = q.reshape((70,))
         
         distances = self._cosine_similarity(self.centroids, q)
-        
         nearest_clusters = np.argsort(distances)[-self.nprob:]
             
         candidates = np.empty((0, self.pq_index.M + 1))
         for cluster in nearest_clusters:
-            skip_rows, max_rows = self._magic_seek(cluster, self.metadata)
             loaded_cluster = np.loadtxt(f"out/clusters/{cluster}.cluster", dtype=int)
-            candidates = np.append(candidates,loaded_cluster,axis = 0)
+            candidates = np.append(candidates, loaded_cluster, axis = 0)
             
             
         candidates = candidates.astype(int)
@@ -99,23 +93,14 @@ class IVF_PQ(Index):
             # save cluster to disk with its Id as name
             np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
             
-        # save index file (centroids + metadata)
-        index_data = np.column_stack((self.centroids, self.metadata))  
-        np.savetxt(filename, index_data)
+        np.savetxt(filename, self.centroids)
 
            
     def load(self, filename):
         if not self.is_loaded_IVF:
             print("loading IVF index")  
             self.is_loaded_IVF = True
-            index_data = np.loadtxt(filename)
-            self.metadata = index_data[:,-1].astype(int)
-            self.centroids = index_data[:,:-1]
-        
-    def _magic_seek(self, cluster_id, metadata):
-        skip_rows = np.sum(metadata[:cluster_id])
-        max_rows = metadata[cluster_id]
-        return skip_rows, max_rows
+            self.centroids = np.loadtxt(filename)
     
     def _cosine_similarity(self, X, y):
         dot_product = X @ y.T 
