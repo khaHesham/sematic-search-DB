@@ -7,6 +7,7 @@ import numpy as np
 from index import Index
 from indexpq import IndexPQ
 from scipy.cluster.vq import kmeans2
+import os
 
 
 class IVF_PQ(Index):
@@ -27,8 +28,12 @@ class IVF_PQ(Index):
         self.clusters = []          # Vectors assigned to each cluster
         self.metadata = None        # the number of vectors within each cluster
         
-        self.clusters_file = 'out/clusters'
+        self.clusters_file = 'out/clusters_all_in_one'
         self.pq_index_file = 'out/centroids'
+        
+        self.is_loaded_PQ = False
+        self.is_loaded_IVF = False
+        
 
             
     def train(self, data: np.ndarray):
@@ -57,9 +62,9 @@ class IVF_PQ(Index):
             vectorIDs, = np.where(labels==clusterID)
             clusters[clusterID] = np.column_stack((pqcodes[vectorIDs], vectorIDs))
             
+            
         self.metadata = np.array([len(clusters[i]) for i in range(self.K)])
-        self.clusters = np.concatenate(clusters)
-        
+        self.clusters = clusters
         
     
     def search(self, q: np.ndarray, top_k: int) -> np.ndarray:  
@@ -79,7 +84,7 @@ class IVF_PQ(Index):
         candidates = np.empty((0, self.pq_index.M + 1))
         for cluster in nearest_clusters:
             skip_rows, max_rows = self._magic_seek(cluster, self.metadata)
-            loaded_cluster = np.loadtxt(self.clusters_file, skiprows=skip_rows, max_rows=max_rows, dtype=int)
+            loaded_cluster = np.loadtxt(f"out/clusters/{cluster}.cluster", dtype=int)
             candidates = np.append(candidates,loaded_cluster,axis = 0)
             
             
@@ -87,8 +92,11 @@ class IVF_PQ(Index):
         vectorIDs = candidates[:,-1]
         pqcodes = candidates[:,:-1] 
         
-        print("loading PQ index")
-        self.pq_index.load(self.pq_index_file)
+        if not self.is_loaded_PQ:
+            print("loading PQ index")
+            self.is_loaded_PQ = True
+            self.pq_index.load(self.pq_index_file)
+            
         print("searching PQ index")
         top_indices = self.pq_index.search(q, top_k, pqcodes)
         
@@ -98,7 +106,12 @@ class IVF_PQ(Index):
     def save(self, filename):
         # save clusters file
         print("saving IVF index")
-        np.savetxt(self.clusters_file, self.clusters, fmt="%d")
+        
+        for clusterID in range(self.K):
+            # save cluster to disk with its Id as name
+            np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
+            
+        # np.savetxt(self.clusters_file, self.clusters, fmt="%d")
 
         # save index file (centroids + metadata)
         index_data = np.column_stack((self.centroids, self.metadata))  
@@ -106,10 +119,12 @@ class IVF_PQ(Index):
 
            
     def load(self, filename):
-        print("loading IVF index")
-        index_data = np.loadtxt(filename)
-        self.metadata = index_data[:,-1].astype(int)
-        self.centroids = index_data[:,:-1]
+        if not self.is_loaded_IVF:
+            print("loading IVF index")  
+            self.is_loaded_IVF = True
+            index_data = np.loadtxt(filename)
+            self.metadata = index_data[:,-1].astype(int)
+            self.centroids = index_data[:,:-1]
         
 
         

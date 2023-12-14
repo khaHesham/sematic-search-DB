@@ -3,7 +3,7 @@ import numpy as np
 from index import Index
 
 class VecDB:
-    def __init__(self, index: Index, file_path: str = "saved_db.csv", new_db: bool = True) -> None:
+    def __init__(self, index: Index, file_path: str = "out/saved_db.csv", new_db: bool = True) -> None:
         self.file_path = file_path
         self.index = index
         self.indexfile = 'out/IVF_index'
