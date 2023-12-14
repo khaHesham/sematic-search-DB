@@ -1,5 +1,4 @@
 import numpy as np
-from worst_case_implementation import VecDBWorst
 import time
 from dataclasses import dataclass
 from typing import List
@@ -61,7 +60,7 @@ def eval(results: List[Result]):
 if __name__ == "__main__":
     # db = VecDBWorst()
     # M = 70, nbits = 8 (recommended not to change)
-    D, M, nbits = 70, 14, 10 
+    D, M, nbits = 70, 14, 8 
     pq_index = IndexPQ(D, M, nbits)
     
     # 1M -> nprob = 64, nbits = 9

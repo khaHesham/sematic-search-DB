@@ -32,7 +32,7 @@ class IndexPQ(Index):
         self.K = 2**nbits
         self.d = D//self.M
         
-        self.pqcodesfile = 'pqcodes'
+        self.pqcodesfile = 'out/pqcodes'
         
     def train(self,  data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         '''Trains the PQ index on the given data
@@ -48,6 +48,9 @@ class IndexPQ(Index):
                     The PQ codes assined to each vector of the training data
         '''
         M, K, D, d, N = self.M, self.K, self.D, self.d, data.shape[0]
+        
+        # norms = np.linalg.norm(data, axis=1, keepdims=True)
+        # data = data / norms
         
         centroids = np.zeros((M, K, d)) 
         labels = np.zeros((M, N), dtype=np.uint32) # the dtype should be modified according to max number of centroids
@@ -82,22 +85,22 @@ class IndexPQ(Index):
         # if not pqcodes:
             # pqcodes = np.loadtxt(self.pqcodesfile, dtype=np.uint32)
           
+        # q = q / np.linalg.norm(q)
         q = q.reshape(M, d)
         
         # The distances matrix of shape(M, K) 
         # It holds the distances between each query subvector and all the centroids of this subspace
-        distances = np.linalg.norm(self.centroids - q[:, np.newaxis, :], axis=2)**2
-        # distances = np.zeros((M, K))
-        # for m in range(self.M):
-        #     distances[m] = np.linalg.norm(self.centroids[m] - q[m], axis=1)
-       
-        scores = np.linalg.norm(distances[np.arange(M), pqcodes], axis=1)
+        # distances = np.linalg.norm(self.centroids - q[:, np.newaxis, :], axis=2)
+        # scores = np.linalg.norm(distances[np.arange(M), pqcodes], axis=1)
         
-        # N, _ = pqcodes.shape
-        # scores = np.zeros(N)
-        # for m in range(self.M):
-        #     scores += distances[m, pqcodes[m]]
-        
+        distances = np.zeros((M, K))
+        for m in range(M):
+            distances[m] = np.linalg.norm(self.centroids[m] - q[m], axis=1)**2
+            
+        N, _ = pqcodes.shape
+        scores = np.zeros(N)
+        for m in range(M):
+            scores += distances[m, pqcodes[:, m]]
         
         # argpartition has a complexity of O(N+klogK) thus it's better than argsort that has complexiy of O(nlogn)
         # where K here is top_k and n is the length of scores
