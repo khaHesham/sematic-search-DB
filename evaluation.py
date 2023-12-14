@@ -65,10 +65,10 @@ if __name__ == "__main__":
     
     # 1M -> nprob = 64, nbits = 9
     # 200K -> nprob = 14, nbits = 6 (so far)
-    index_ivfpq = IVF_PQ(nprob=16, nbits=4, D=D ,pq_index=pq_index)  #nprob -6 -> 12
+    index_ivfpq = IVF_PQ(nprob=10, nbits=9, D=D ,pq_index=pq_index)  #nprob -6 -> 12
     db = VecDB(index_ivfpq)
     
-    records_np = np.random.random((10000, 70))
+    records_np = np.random.random((1000000, 70))
     records_dict = [{"id": i, "embed": list(row)} for i, row in enumerate(records_np)]
     _len = len(records_np)
     db.insert_records(records_dict)

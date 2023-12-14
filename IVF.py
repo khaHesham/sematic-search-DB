@@ -55,7 +55,7 @@ class IVF_PQ(Index):
             clusters[clusterID] = np.column_stack((data[vectorIDs], vectorIDs))
             
             
-        self.metadata = np.array([len(clusters[i]) for i in range(self.K)])
+        # self.metadata = np.array([len(clusters[i]) for i in range(self.K)])
         self.clusters = clusters
         
     
@@ -97,17 +97,17 @@ class IVF_PQ(Index):
             np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID])
             
         # save index file (centroids + metadata)
-        index_data = np.column_stack((self.centroids, self.metadata))  
-        np.savetxt(filename, index_data)
+        # index_data = np.column_stack((self.centroids, self.metadata))  
+        np.savetxt(filename, self.centroids)
 
            
     def load(self, filename):
         if not self.is_loaded_IVF:
             print("loading IVF index")  
             self.is_loaded_IVF = True
-            index_data = np.loadtxt(filename)
-            self.metadata = index_data[:,-1].astype(int)
-            self.centroids = index_data[:,:-1]
+            self.centroids = np.loadtxt(filename)
+            # self.metadata = index_data[:,-1].astype(int)
+            # self.centroids = index_data[:,:-1]
         
     def _magic_seek(self, cluster_id, metadata):
         skip_rows = np.sum(metadata[:cluster_id])
