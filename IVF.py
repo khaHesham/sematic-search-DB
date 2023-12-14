@@ -41,10 +41,10 @@ class IVF_PQ(Index):
         #TODO In case of more than 1M, we need to train on 1M, then predict the other vectors
         self.centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
 
-        print("Training PQ")
-        _, pqcodes = self.pq_index.train(data)
-        print("Saving PQ")
-        self.pq_index.save(self.pq_index_file)
+        # print("Training PQ")
+        # _, pqcodes = self.pq_index.train(data)
+        # print("Saving PQ")
+        # self.pq_index.save(self.pq_index_file)
 
         clusters = [None] * self.K
 
@@ -52,7 +52,7 @@ class IVF_PQ(Index):
         print("clustering vectors") 
         for clusterID in range(self.K):
             vectorIDs, = np.where(labels==clusterID)
-            clusters[clusterID] = np.column_stack((pqcodes[vectorIDs], vectorIDs))
+            clusters[clusterID] = np.column_stack((data[vectorIDs], vectorIDs))
             
             
         self.metadata = np.array([len(clusters[i]) for i in range(self.K)])
@@ -61,32 +61,29 @@ class IVF_PQ(Index):
     
     def search(self, q: np.ndarray, top_k: int) -> np.ndarray:  
         print("searching IVF")
-        # distances = np.linalg.norm(self.centroids - q, axis=1)  
-        # nearest_clusters = np.argpartition(distances, self.nprob)[ :self.nprob]
         q = q.reshape((70,))
         
         distances = self._cosine_similarity(self.centroids, q)
-        
         nearest_clusters = np.argsort(distances)[-self.nprob:]
             
-        candidates = np.empty((0, self.pq_index.M + 1))
+        candidates = np.empty((0, self.D + 1))
         for cluster in nearest_clusters:
-            skip_rows, max_rows = self._magic_seek(cluster, self.metadata)
-            loaded_cluster = np.loadtxt(f"out/clusters/{cluster}.cluster", dtype=int)
+            loaded_cluster = np.loadtxt(f"out/clusters/{cluster}.cluster")
             candidates = np.append(candidates,loaded_cluster,axis = 0)
             
-            
-        candidates = candidates.astype(int)
-        vectorIDs = candidates[:,-1]
-        pqcodes = candidates[:,:-1] 
+        vectorIDs = candidates[:,-1].astype(int)
+        vectors = candidates[:,:-1] 
         
-        if not self.is_loaded_PQ:
-            print("loading PQ index")
-            self.is_loaded_PQ = True
-            self.pq_index.load(self.pq_index_file)
+        # if not self.is_loaded_PQ:
+        #     print("loading PQ index")
+        #     self.is_loaded_PQ = True
+        #     self.pq_index.load(self.pq_index_file)
             
-        print("searching PQ index")
-        top_indices = self.pq_index.search(q, top_k, pqcodes)
+        # print("searching PQ index")
+        # top_indices = self.pq_index.search(q, top_k, pqcodes)
+        
+        distances = self._cosine_similarity(vectors, q)
+        top_indices = np.argsort(distances)[-top_k:]
         
         return vectorIDs[top_indices]       
         
@@ -97,7 +94,7 @@ class IVF_PQ(Index):
         
         for clusterID in range(self.K):
             # save cluster to disk with its Id as name
-            np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
+            np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID])
             
         # save index file (centroids + metadata)
         index_data = np.column_stack((self.centroids, self.metadata))  
