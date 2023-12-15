@@ -32,7 +32,9 @@ class IndexPQ(Index):
         self.K = 2**nbits
         self.d = D//self.M
         
-        self.pqcodesfile = 'out/pqcodes'
+        self.index_file = 'out/PQ_index.centroids'
+        self.pqcodes_file = 'out/PQ_index.codes'
+        self.is_loaded = False
         
     def train(self,  data: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         '''Trains the PQ index on the given data
@@ -61,7 +63,7 @@ class IndexPQ(Index):
         self.centroids = centroids
         self.pqcodes = labels.T
         
-        return self.centroids, self.pqcodes
+        return self.pqcodes
         
     
     def search(self, q: np.ndarray, top_k: int=10, pqcodes=None) -> np.ndarray:
@@ -83,13 +85,14 @@ class IndexPQ(Index):
           
         # If no candidates are given do an exuastive search on all the data 
         # if not pqcodes:
-            # pqcodes = np.loadtxt(self.pqcodesfile, dtype=np.uint32)
+            # pqcodes = np.loadtxt(self.pqcodes_file, dtype=np.uint32)
           
         # q = q / np.linalg.norm(q)
         q = q.reshape(M, d)
         
         # The distances matrix of shape(M, K) 
         # It holds the distances between each query subvector and all the centroids of this subspace
+        
         # distances = np.linalg.norm(self.centroids - q[:, np.newaxis, :], axis=2)
         # scores = np.linalg.norm(distances[np.arange(M), pqcodes], axis=1)
         
@@ -124,26 +127,42 @@ class IndexPQ(Index):
         centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
         return centroids, labels
     
-    def save(self, filename):
+    def predict(self, data: np.ndarray) -> np.ndarray:
+        # norms = np.linalg.norm(data, axis=1, keepdims=True)
+        # data = data / norms
+        
+        N, _ = data.shape
+        labels = np.zeros((self.M, N), dtype=np.uint32) 
+        
+        for m in range(self.M):
+            labels[m], _ = vq(data[: , m*d: (m+1)*d], self.centroids[m])
+
+        return labels.T
+    
+    def save(self, filename=None):
         '''Saves the index into disk
 
         Args:
             filename: the name of index file
-        
-        Note:
-            The stored index file in PQ should contain only the centroids learned,
-            the pqcodes are stored in case an exhaustive search is needed
         '''
+        if filename is None:
+            filename = self.index_file
         # savetxt requires only 1D or 2D arrays so the array must be reshaped before saving
         np.savetxt(filename, self.centroids.reshape(self.M*self.K, self.d))
-        np.savetxt(self.pqcodesfile, self.pqcodes)
+        np.savetxt(self.pqcodes_file, self.pqcodes, fmt="%d")
         
     
-    def load(self, filename):
+    def load(self, filename=None):
         '''Loades the index into memory
 
         Args:
             filename: the name of index file
         '''
-        self.centroids = np.loadtxt(filename).reshape((self.M, self.K, self.d))
+        if filename is None:
+            filename = self.index_file
+            
+        if not self.is_loaded:
+            print("loading IVF index")  
+            self.is_loaded = True
+            self.centroids = np.loadtxt(filename).reshape((self.M, self.K, self.d))
                 

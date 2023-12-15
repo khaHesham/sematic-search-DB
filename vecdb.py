@@ -6,7 +6,6 @@ class VecDB:
     def __init__(self, index: Index, file_path: str = "out/saved_db.csv", new_db: bool = True) -> None:
         self.file_path = file_path
         self.index = index
-        self.indexfile = 'out/IVF_index'
         
         if new_db:
             with open(self.file_path, "w") as fout:
@@ -22,14 +21,14 @@ class VecDB:
         self._build_index(data)
 
     def retrive(self, query: Annotated[List[float], 70], top_k: int = 5):
-        self.index.load(self.indexfile)
+        self.index.load()
         
         q = np.array(query)
         return list(self.index.search(q, top_k))
 
     def _build_index(self, data):
         self.index.train(data)
-        self.index.save(self.indexfile)
+        self.index.save()
         
     def _cal_score(self, vec1, vec2):
         dot_product = np.dot(vec1, vec2)

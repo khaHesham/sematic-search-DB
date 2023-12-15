@@ -7,8 +7,6 @@ import numpy as np
 from index import Index
 from indexpq import IndexPQ
 from scipy.cluster.vq import kmeans2
-import os
-
 
 class IVF_PQ(Index):
 
@@ -24,41 +22,42 @@ class IVF_PQ(Index):
         self.K = 2**nbits 
         self.nprob = nprob          # Number of clusters to be retrieved during search
         self.pq_index = pq_index
-
-        self.clusters = []          # Vectors assigned to each cluster
-        self.metadata = None        # the number of vectors within each cluster
         
-        self.clusters_file = 'out/clusters_all_in_one'
-        self.pq_index_file = 'out/centroids'
-        
-        self.is_loaded_PQ = False
-        self.is_loaded_IVF = False
+        self.index_file = 'out/IVF_index.centroids'
+        self.is_loaded = False
         
             
     def train(self, data: np.ndarray):
         print("Training IVF")
-        #TODO In case of more than 1M, we need to train on 1M, then predict the other vectors
         self.centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
 
         print("Training PQ")
-        _, pqcodes = self.pq_index.train(data)
-        print("Saving PQ")
-        self.pq_index.save(self.pq_index_file)
-
-        clusters = [None] * self.K
+        pqcodes = self.pq_index.train(data)
 
         print("clustering vectors") 
         for clusterID in range(self.K):
             vectorIDs, = np.where(labels==clusterID)
-            clusters[clusterID] = np.column_stack((pqcodes[vectorIDs], vectorIDs))
+            cluster = np.column_stack((pqcodes[vectorIDs], vectorIDs))
+            np.savetxt(f"out/clusters/{clusterID}.cluster", cluster, fmt="%d")
+                    
+    def predict(self, data: np.ndarray):
+        labels, _ = vq(data, self.centroids)
+        
+        pqcodes = self.pq_index.predict(data)
+        
+        print("clustering new vectors") 
+        for clusterID in range(self.K):
+            vectorIDs, = np.where(labels==clusterID)
+            cluster = np.column_stack((pqcodes[vectorIDs], vectorIDs))
             
-        self.clusters = clusters
+            #append clusters to to clusters files
+            pre_cluster = np.loadtxt(f"out/clusters/{clusterID}.cluster", dtype=int)
+            post_cluster = np.vstack((pre_cluster, cluster))
+            np.savetxt(f"out/clusters/{clusterID}.cluster", post_cluster, fmt="%d")
         
     
     def search(self, q: np.ndarray, top_k: int) -> np.ndarray:  
         print("searching IVF")
-        # distances = np.linalg.norm(self.centroids - q, axis=1)  
-        # nearest_clusters = np.argpartition(distances, self.nprob)[ :self.nprob]
         q = q.reshape((70,))
         
         distances = self._cosine_similarity(self.centroids, q)
@@ -73,11 +72,6 @@ class IVF_PQ(Index):
         candidates = candidates.astype(int)
         vectorIDs = candidates[:,-1]
         pqcodes = candidates[:,:-1] 
-        
-        if not self.is_loaded_PQ:
-            print("loading PQ index")
-            self.is_loaded_PQ = True
-            self.pq_index.load(self.pq_index_file)
             
         print("searching PQ index")
         top_indices = self.pq_index.search(q, top_k, pqcodes)
@@ -85,22 +79,32 @@ class IVF_PQ(Index):
         return vectorIDs[top_indices]       
         
         
-    def save(self, filename):
-        # save clusters file
-        print("saving IVF index")
-        
-        for clusterID in range(self.K):
-            # save cluster to disk with its Id as name
-            np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
+    def save(self, filename=None):
+        if filename is None:
+            filename = self.index_file
             
+        print("saving IVF index")         
         np.savetxt(filename, self.centroids)
+        
+        print("Saving PQ index")
+        self.pq_index.save()
+        
+        # for clusterID in range(self.K):
+            # save cluster to disk with its Id as name
+            # np.savetxt(f"out/clusters/{clusterID}.cluster", self.clusters[clusterID], fmt="%d")
 
            
-    def load(self, filename):
-        if not self.is_loaded_IVF:
+    def load(self, filename=None):
+        if filename is None:
+            filename = self.index_file
+            
+        if not self.is_loaded:
             print("loading IVF index")  
-            self.is_loaded_IVF = True
+            self.is_loaded = True
             self.centroids = np.loadtxt(filename)
+            
+        self.pq_index.load()
+            
     
     def _cosine_similarity(self, X, y):
         dot_product = X @ y.T 

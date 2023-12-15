@@ -58,7 +58,6 @@ def eval(results: List[Result]):
 
 
 if __name__ == "__main__":
-    # db = VecDBWorst()
     # M = 70, nbits = 8 (recommended not to change)
     D, M, nbits = 70, 14, 8 
     pq_index = IndexPQ(D, M, nbits)
