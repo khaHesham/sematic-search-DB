@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.cluster.vq import kmeans2
+from scipy.cluster.vq import kmeans2, vq
 
 from index import Index
 from typing import Dict, List, Any, Tuple
@@ -19,7 +19,7 @@ class IndexPQ(Index):
             The assigned PQ codes for each vector in the training data
     '''
     
-    def __init__(self, D: int, M: int, nbits: int) -> None:
+    def __init__(self, D: int, M: int, nbits: int, iter=100) -> None:
         '''Initialize PQ Index.
 
         Args:
@@ -31,6 +31,7 @@ class IndexPQ(Index):
         self.D = D
         self.K = 2**nbits
         self.d = D//self.M
+        self.iter = iter
         
         self.index_file = 'out/PQ_index.centroids'
         self.pqcodes_file = 'out/PQ_index.codes'
@@ -124,7 +125,7 @@ class IndexPQ(Index):
                     The clusters assigned to each data vector 
                     (i.e., labels[i] is the id of the closest centroid to the ith observation)
         '''
-        centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
+        centroids, labels = kmeans2(data, self.K, minit='points', iter = self.iter)
         return centroids, labels
     
     def predict(self, data: np.ndarray) -> np.ndarray:
@@ -135,7 +136,7 @@ class IndexPQ(Index):
         labels = np.zeros((self.M, N), dtype=np.uint32) 
         
         for m in range(self.M):
-            labels[m], _ = vq(data[: , m*d: (m+1)*d], self.centroids[m])
+            labels[m], _ = vq(data[: , m*self.d: (m+1)*self.d], self.centroids[m])
 
         return labels.T
     

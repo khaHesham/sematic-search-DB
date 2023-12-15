@@ -6,11 +6,11 @@ Date : 12/10/2024
 import numpy as np
 from index import Index
 from indexpq import IndexPQ
-from scipy.cluster.vq import kmeans2
+from scipy.cluster.vq import kmeans2, vq
 
 class IVF_PQ(Index):
 
-    def __init__(self, D: int, nbits: int, nprob: int, pq_index: IndexPQ) -> None:
+    def __init__(self, D: int, nbits: int, nprob: int, pq_index: IndexPQ, iter=100) -> None:
         '''Initialize IVF_PQ.
 
         Args:
@@ -22,6 +22,7 @@ class IVF_PQ(Index):
         self.K = 2**nbits 
         self.nprob = nprob          # Number of clusters to be retrieved during search
         self.pq_index = pq_index
+        self.iter = iter
         
         self.index_file = 'out/IVF_index.centroids'
         self.is_loaded = False
@@ -29,7 +30,7 @@ class IVF_PQ(Index):
             
     def train(self, data: np.ndarray):
         print("Training IVF")
-        self.centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
+        self.centroids, labels = kmeans2(data, self.K, minit='points', iter = self.iter)
 
         print("Training PQ")
         pqcodes = self.pq_index.train(data)
@@ -41,6 +42,7 @@ class IVF_PQ(Index):
             np.savetxt(f"out/clusters/{clusterID}.cluster", cluster, fmt="%d")
                     
     def predict(self, data: np.ndarray):
+        print("predicting remaining data")
         labels, _ = vq(data, self.centroids)
         
         pqcodes = self.pq_index.predict(data)
