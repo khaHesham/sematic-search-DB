@@ -6,7 +6,7 @@ Date : 12/10/2024
 import numpy as np
 from index import Index
 from indexpq import IndexPQ
-from scipy.cluster.vq import kmeans2
+from scipy.cluster.vq import kmeans2, vq
 import os
 
 
@@ -28,7 +28,6 @@ class IVF_PQ(Index):
         self.clusters = []          # Vectors assigned to each cluster
         self.metadata = None        # the number of vectors within each cluster
         
-        self.clusters_file = 'out/clusters_all_in_one'
         self.pq_index_file = 'out/centroids'
         
         self.is_loaded_PQ = False
@@ -39,7 +38,23 @@ class IVF_PQ(Index):
     def train(self, data: np.ndarray):
         print("Training IVF")
         #TODO In case of more than 1M, we need to train on 1M, then predict the other vectors
+        
+        # labels = None
+        # if data.shape[0] > 1000:
+        #     data_1M = data[:1000]
+        #     self.centroids, labels = kmeans2(data_1M, self.K, minit='points', iter = 128)
+            
+        #     print("predicting IVF")
+        #     data_rest = data[1000:]
+        #     labels_rest,_ = vq(data_rest, centroids)
+        #     labels = np.concatenate((labels,labels_rest))
+            
+        #     print(labels.shape)
+ 
+            
+        # else:
         self.centroids, labels = kmeans2(data, self.K, minit='points', iter = 128)
+            
 
         # print("Training PQ")
         # _, pqcodes = self.pq_index.train(data)
