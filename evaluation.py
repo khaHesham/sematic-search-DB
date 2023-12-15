@@ -61,16 +61,20 @@ if __name__ == "__main__":
     iterations = 128
     
     # M = 70, nbits = 8 (recommended not to change)
-    D, M, nbits_pq = 70, 14, 8 
+    D, M, nbits_pq = 70, 14, 8   # 14,8
     pq_index = IndexPQ(D, M, nbits_pq, iter=iterations)
     
     # 1M -> nprob = 64, nbits = 9
     # 200K -> nprob = 14, nbits = 6 (so far)
-    nprob, nbits_ivf = 16, 4
+    nprob, nbits_ivf = 64, 9   # 16,9
+    
     index_ivfpq = IVF_PQ(D, nbits_ivf, nprob, pq_index, iter=iterations)  #nprob -6 -> 12
     db = VecDB(index_ivfpq)
     
-    records_np = np.random.random((10100, 70))
+    rng = np.random.default_rng(50)
+    records_np = rng.random((1500000, 70), dtype=np.float32)
+    
+    # records_np = np.random.random((10100, 70))
     records_dict = [{"id": i, "embed": list(row)} for i, row in enumerate(records_np)]
     _len = len(records_np)
     db.insert_records(records_dict)
